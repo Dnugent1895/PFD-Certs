@@ -1503,6 +1503,54 @@ window.PFD_CERT = (function () {
       }
     });
 
+    // ---------- swipe navigation ----------
+    // Swipe LEFT  → next step (validates with the same Continue button)
+    // Swipe RIGHT → previous step
+    // Ignored when the user is interacting with form inputs or the
+    // signature pad, and ignored if the gesture is mostly vertical
+    // (so page scrolling still works normally).
+    (function attachSwipe() {
+      let sx = 0, sy = 0, st = 0;
+      function onStart(e) {
+        const t = e.touches ? e.touches[0] : e;
+        sx = t.clientX; sy = t.clientY; st = Date.now();
+      }
+      function onEnd(e) {
+        if (Date.now() - st > 700) return;
+        const t = e.changedTouches ? e.changedTouches[0] : e;
+        const dx = t.clientX - sx;
+        const dy = t.clientY - sy;
+        if (Math.abs(dx) < 80) return;                 // too short
+        if (Math.abs(dy) > Math.abs(dx) * 0.6) return; // mostly vertical
+        const tg = e.target;
+        if (!tg) return;
+        // Don't hijack swipes inside form fields, signature pad, or buttons
+        if (tg.matches && tg.matches('input,textarea,select,button,canvas')) return;
+        if (tg.closest && (tg.closest('.sigpad') || tg.closest('.roster'))) return;
+        if (dx < 0) goNext(); else goPrev();
+      }
+      function currentStep() {
+        const a = document.querySelector('.steps li.active');
+        return a ? +a.dataset.step : 0;
+      }
+      function goNext() {
+        const n = currentStep();
+        const btn = ({1:'#step1Next', 2:'#step2Next', 3:'#step3Next'})[n];
+        if (btn) document.querySelector(btn).click();
+      }
+      function goPrev() {
+        const n = currentStep();
+        const btn = document.querySelector('button[data-prev="' + n + '"]');
+        if (btn) btn.click();
+      }
+      document.addEventListener('touchstart', onStart, { passive: true });
+      document.addEventListener('touchend',   onEnd,   { passive: true });
+      // Mouse equivalents — let people demo swipe on a laptop trackpad too
+      let mouseDown = false;
+      document.addEventListener('mousedown', (e) => { mouseDown = true; onStart(e); });
+      document.addEventListener('mouseup',   (e) => { if (mouseDown) onEnd(e); mouseDown = false; });
+    })();
+
     setStep(1);
   }
 
